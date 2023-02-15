@@ -24,6 +24,6 @@ docker-compose up
 
 <p float="left">
   <a href="https://skillicons.dev">
-    <img src="https://skillicons.dev/icons?i=docker,python,twittergit,vscode" />
+    <img src="https://skillicons.dev/icons?i=docker,python,twitter,git,vscode" />
   </a>
 </p>
