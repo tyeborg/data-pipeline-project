@@ -1,24 +1,29 @@
 # Mean Tweet Pipeline
 
 ## Installation
-Clone this repository by `git clone https://github.com/tyeborg/mean-tweet-pipeline.git`
+(1) Clone this repository by `git clone https://github.com/tyeborg/mean-tweet-pipeline.git`
 
-(1) Navigate to the `pipeline` directory by entering the following in the command line: 
+(2) Navigate to the `pipeline` directory by entering the following in the command line: 
 ```bash
 cd pipeline
 ```
-(2) Then, navigate to the `airflow` directory by entering the following in the command line:
+(3) Then, navigate to the `airflow` directory by entering the following in the command line:
 ```bash
 cd airflow
 ```
 
-(3) Open the Docker Application and ensure that you don't have any other containers running using `docker ps`
+(4) Open the Docker Application and ensure that you don't have any other containers running using `docker ps`
 
-(4) Enter the following to build the Docker container:
+(5) On all operating systems, you need to run database migrations and create the first user account. To do this, run:
 ```bash
-docker-compose up
+docker compose up airflow-init
 ```
-(5) Visit Apache Airflow webserver at: `http://localhost:8081`
+
+(6) After initialization is complete, enter the following to build the Docker container (running Airflow services):
+```bash
+docker compose up
+```
+(7) Visit Apache Airflow webserver at: `http://localhost:8080`
 
 ## Languages & Tools Utilized
 
