@@ -8,6 +8,9 @@ import pandas as pd
 #nltk.download('stopwords')
 #from nltk.corpus import stopwords
 #from nltk.stem.porter import PorterStemmer
+import nltk
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+
 
 import psycopg2
 import datetime as dt
@@ -83,8 +86,30 @@ def clean_tweet_data(tweet_data):
 
 # Construct a method to return the sentiment result of text.
 def obtain_tweet_sentiment(tweet_text):
-    # code to analyze tweet sentiment
-    pass
+    
+    # Initialize the sentiment analyzer.
+    analyzer = SentimentIntensityAnalyzer()
+    
+    # Obtain the sentiment score.
+    score = analyzer.polarity_scores(tweet_text)
+    
+    # Obtain the compound score.
+    compound = score['compound']
+    
+    # Classify the tweet sentiment based on the compound score.
+    # If the compound score is greater than 0.05, the tweet is classified as positive.
+    if compound >= 0.05:
+        sentiment = 'positive'
+    # If the compound score is less than -0.05, the tweet is classified as negative.
+    elif compound <= -0.05:
+        sentiment = 'negative'
+    # If the compound score is between -0.05 and 0.05, the tweet is classified as neutral.
+    else:
+        sentiment = 'neutral'
+    
+    # Return the sentiment.
+    return sentiment
+
 
 # METHOD IS STILL BEING REFINED...
 # Define the function to send data to Postgres.    
@@ -162,6 +187,25 @@ def store_tweet_sentiment():
     # Close the cursor and connection
     cur.close()
     conn.close()
+
+
+# Define the function to classify the sentiment of the tweet text.
+def classify_tweet_sentiment(tweet_data):
+    # Args: tweet_data (dict): A dictionary containing tweet data, including the tweet text.
+    # Returns: dict: A dictionary containing tweet data, including the tweet text and sentiment.
+    
+    for tweet in tweet_data:
+        # Obtain the tweet text.
+        text = tweet['text']
+        
+        # Obtain the sentiment of the tweet.
+        sentiment = obtain_tweet_sentiment(text)
+        
+        # Update the 'sentiment' info with the sentiment result.
+        tweet['sentiment'] = sentiment
+    
+    return tweet_data
+
 
 default_args = {
     'owner': 'Caffeinated Quantum Squadron',
