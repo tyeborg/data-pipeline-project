@@ -11,19 +11,22 @@ cd pipeline
 ```bash
 cd airflow
 ```
+(4) Install the required packages to execute the pipeline:
+```bash
+pip install -r requirements.txt
+```
+(5) Open the Docker Application and ensure that you don't have any other containers running using `docker ps`
 
-(4) Open the Docker Application and ensure that you don't have any other containers running using `docker ps`
-
-(5) On all operating systems, you need to run database migrations and create the first user account. To do this, run:
+(6) On all operating systems, you need to run database migrations and create the first user account. To do this, run:
 ```bash
 docker compose up airflow-init
 ```
 
-(6) After initialization is complete, enter the following to build the Docker container (running Airflow services):
+(7) After initialization is complete, enter the following to build the Docker container (running Airflow services):
 ```bash
 docker compose up
 ```
-(7) Visit Apache Airflow webserver at: `http://localhost:8080`
+(8) Visit Apache Airflow webserver at: `http://localhost:8080`
 
 ## Languages & Tools Utilized
 
