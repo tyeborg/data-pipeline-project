@@ -13,96 +13,108 @@ import psycopg2
 import datetime as dt
 from airflow import DAG
 from datetime import timedelta
-from airflow.models import Variable
+from airflow.models import Variable, Connection
 from airflow.operators.python_operator import PythonOperator
 
 # Construct a method to extract tweet data.
 def extract_tweet_data():
-    # Define the data to be extracted.
-    df=pd.read_csv('../data/data.csv')
-    
     # Initialize a list to store tweet data.
     tweet_data = []
-    
-    for idx, row in df.iterrows():
-        tweet = {
-            'id': row['id'],
-            'created_at': row['date'],
-            'text': row['text'],
-            'user': row['user']
-        }
-        tweet_data.append(tweet)
+    try:
+        # Define the data to be extracted.
+        df = pd.read_csv('./dags/data.csv')
+        
+        # Iterate throughout each row of the dataframe.
+        for idx, row in df.iterrows():
+            tweet = {
+                'id': row['id'],
+                'created_at': row['date'],
+                'text': row['text'],
+                'user': row['user'],
+                'sentiment': ''
+            }
+            tweet_data.append(tweet)
+            
+        print("Data Extraction: Success")
+        
+    except(Exception):
+        print("Data Extraction: Fail")
         
     return tweet_data
 
-# Cleaning Text Steps
-# 1. Convert the letter into lowercase ('Squadron' is not equal to 'squadron').
-# 2. Remove Twitter handles and hashtags.
-# 3. Remove URL links, reference chars, and non-letter characters.
-# 4. Remove punctuations like .,!? etc.
-# 5. Perform Stemming upon the text.
-def clean_tweet_data(tweet_data):
-    # Args: tweet_data (dict): A dictionary containing tweet data, including the tweet text.
-    # Returns: dict: A dictionary containing cleaned tweet data.
+# Construct a method that cleans the text from tweets.
+def clean_tweet_data(**context):
     
-    for tweet in tweet_data:
-        # Declare the tweet text from the dictionary.
-        text = tweet['text']
-        
-        # Normalize by converting text to lowercase.
-        text = text.lower()
-        
-        # Remove Twitter handles and hashtags.
-        text = " ".join([word for word in text.split() if word[0] != '@' and word[0] != '#'])
-        
-        # Remove URL links (http or https).
-        text = re.sub(r'https?:\/\/\S+', '', text)
-        # Remove URL links (with or without www).S
-        text = re.sub(r"www\.[a-z]?\.?(com)+|[a-z]+\.(com)", '', text)
-        
-        # Remove HTML reference characters.
-        text = re.sub(r'&[a-z]+;', '', text)
-        # Remove non-letter characters.
-        text = re.sub(r"[^a-z\s\(\-:\)\\\/\];='#]", '', text)
-        
-        # Remove all punctuations.
-        punctuation_lst = list(string.punctuation)
-        text = " ".join([word for word in text.split() if word not in (punctuation_lst)])
-        # Remove stopwords.
-        #stop = stopwords.words('english')
-        #text = " ".join([word for word in text.split() if word not in (stop)])
-        
-        # Perform Stemming to remove prefixing within text.
-        #port = PorterStemmer()
-        #text = " ".join([port.stem(word) for word in text.split()])
-        
-        # Update the 'text' info with the cleaned version.
-        tweet['text'] = text
+    # Use ti.xcom_pull() to pull the returned value of extract_tweet_data task from XCom.
+    tweet_data = context['task_instance'].xcom_pull(task_ids='extract_tweet_data')
     
+    try:
+        # Iterate through each tweet info in tweet_data.
+        for tweet in tweet_data:
+            # Declare the tweet text from the dictionary.
+            text = tweet['text']
+            
+            # Normalize by converting text to lowercase.
+            text = text.lower()
+            
+            # Remove Twitter handles and hashtags.
+            text = " ".join([word for word in text.split() if word[0] != '@' and word[0] != '#'])
+            
+            # Remove URL links (http or https).
+            text = re.sub(r'https?:\/\/\S+', '', text)
+            # Remove URL links (with or without www).S
+            text = re.sub(r"www\.[a-z]?\.?(com)+|[a-z]+\.(com)", '', text)
+            
+            # Remove HTML reference characters.
+            text = re.sub(r'&[a-z]+;', '', text)
+            # Remove non-letter characters.
+            text = re.sub(r"[^a-z\s\(\-:\)\\\/\];='#]", '', text)
+            
+            # Remove all punctuations.
+            punctuation_lst = list(string.punctuation)
+            text = " ".join([word for word in text.split() if word not in (punctuation_lst)])
+            # Remove stopwords.
+            #stop = stopwords.words('english')
+            #text = " ".join([word for word in text.split() if word not in (stop)])
+            
+            # Perform Stemming to remove prefixing within text.
+            #port = PorterStemmer()
+            #text = " ".join([port.stem(word) for word in text.split()])
+            
+            print("\nOriginal: {}".format(tweet['text']))
+            
+            # Update the 'text' info with the cleaned version.
+            tweet['text'] = text
+            
+            print("Cleaned: {}".format(tweet['text']))
+            
+        print("Data Cleaning: Success")
+            
+    except(Exception):
+        print("Data Cleaning: Failed")
+        
     return tweet_data
 
 # Construct a method to return the sentiment result of text.
-def obtain_tweet_sentiment(tweet_text):
-    # code to analyze tweet sentiment
+def obtain_tweet_sentiment(**context):
+    # Code to analyze tweet sentiment
     pass
 
-# METHOD IS STILL BEING REFINED...
 # Define the function to send data to Postgres.    
-def store_tweet_sentiment():
-    # Get the connection details from Airflow variables.
+def store_data(**context):
+    # Get the connection details from Airflow variable.
     connection_id = 'postgres_connection'
     connection = Variable.get(connection_id, deserialize_json=True)
     
-    # HOST = "postgres"
+    # From Airflow variable, intialize varaibles.
     db_host = connection['host']
-    # PORT = "5432"
     db_port = connection['port']
-    # DATABASE = "postgres"
     db_name = connection['schema']
-    # USER = "airflow"
     db_user = connection['login']
-    # PASSWORD = "airflow"
     db_password = connection['password']
+    
+    # Use ti.xcom_pull() to pull the returned value of extract_tweet_data task from XCom.
+    tweet_data = context['task_instance'].xcom_pull(task_ids='clean_tweet_data')
     
     # Initialize variable.
     cur = None
@@ -116,91 +128,89 @@ def store_tweet_sentiment():
             user=db_user,
             password=db_password
         )
+        # Ensure to the user that a connection has been made.
+        print("Database Connection: Success")
+        
         # Open a cursor to perform database operations.
         cur = conn.cursor()
         
-        # Create the table to store our data in.
+         # Create the table to store our data in.
         create_command = """
-        CREATE TABLE tweet (
-            id SERIAL PRIMARY KEY,
-            user VARCHAR(255) NOT NULL,
-            timedate VARCHAR(255) NOT NULL,
-            tweettext VARCHAR(255) NOT NULL,
-            flag VARCHAR(50) NOT NULL,
-            target VARCHAR(20) NOT NULL
-        )
+            CREATE TABLE TWEETS (
+                ID SERIAL PRIMARY KEY,
+                USER VARCH(25) NOT NULL,
+                TIMEDATE VARCHAR(75) NOT NULL,
+                TWEETTEXT VARCHAR(255) NOT NULL,
+                TARGET VARCHAR(25)
+            );
         """
+        
         # Execute the following SQL query to construct the table.
         cur.execute(create_command)
         
         # Commit the changes.
         conn.commit()
-        print("Table has been created!")
+        print("Table Creation: Success")
+            
     except(Exception):
-        print("Failed to create table")
+        print("Table Creation: Fail")
         
     try:
         # Define the SQL statement to insert data.
         insert_command = """
-        INSERT INTO tweet(ID, USER, TIMEDATE, TWEETTEXT, FLAG, TARGET)
-        VALUES(%s, %s, %s, %s, %s, %s);
+            INSERT INTO TWEETS(ID, USER, TIMEDATE, TWEETTEXT, TARGET)
+            VALUES(%s, %s, %s, %s, %s);
         """
-        # Define the data to be inserted.
-        df=pd.read_csv('../data/data.csv')
         
         # Loop through the data and insert it into the database.
-        for idx, row in df.iterrows():
-            cur.execute(insert_command, (row['id'], row['user'], row['date'], row['text'], row['flag'], row['target']))
-        print("Database insert complete")
+        for row in tweet_data:
+            cur.execute(insert_command, (row['id'], row['user'], row['created_at'], row['text'], row['sentiment']))
 
         # Commit the changes.
         conn.commit()
+        print("Data Insertion: Success")
 
     except(Exception):
-        print("Failed to insert data")
+        print("Data Insertion: Fail")
     
     # Close the cursor and connection
     cur.close()
     conn.close()
-
+    
 default_args = {
     'owner': 'Caffeinated Quantum Squadron',
-    'start_date': dt.datetime(2023, 3, 5),
+    'start_date': dt.datetime(2023, 3, 8),
     'retries': 1,
     'retry_delay': dt.timedelta(minutes=5),
 }
 # Define the DAG.
 dag = DAG(
-    dag_id = 'awesome_sauces',
+    dag_id = 'boop42',
     description='A pipeline for analyzing Twitter sentiment',
     default_args=default_args,
     schedule='@once'
 )
-extract_tweet_task = PythonOperator(
+extract_task = PythonOperator(
     task_id='extract_tweet_data',
     python_callable=extract_tweet_data,
+    provide_context=True,
     dag=dag
 )
 clean_task = PythonOperator(
     task_id='clean_tweet_data',
     python_callable=clean_tweet_data,
-    op_kwargs={'tweet_data': '{{ ti.xcom_pull(task_ids="extract_tweet_data") }}'},
+    provide_context=True,
     dag=dag
 )
-# Define the operator to run the store function.
-#store_task = PythonOperator(
-    #task_id='store_into_database',
-    #python_callable=store_tweet_sentiment,
-    #dag=dag
-#)
+store_task = PythonOperator(
+    task_id='store_data',
+    python_callable=store_data,
+    provide_context=True,
+    dag=dag
+)
 
-extract_tweet_task >> clean_task
+extract_task >> clean_task >> store_task
 
 if __name__ == "__main__":
-    #dag.cli()
-    data = extract_tweet_data()
-    print(data[56]['text'])
-    
-    cleaned_data = clean_tweet_data(data)
-    print(cleaned_data[56]['text'])
+    dag.cli()
     
