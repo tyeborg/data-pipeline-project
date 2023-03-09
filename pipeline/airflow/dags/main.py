@@ -8,6 +8,9 @@ import pandas as pd
 #nltk.download('stopwords')
 #from nltk.corpus import stopwords
 #from nltk.stem.porter import PorterStemmer
+import nltk
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+
 
 import psycopg2
 import datetime as dt
@@ -96,8 +99,8 @@ def clean_tweet_data(**context):
     return tweet_data
 
 # Construct a method to return the sentiment result of text.
-def obtain_tweet_sentiment(**context):
-    # Code to analyze tweet sentiment
+def obtain_tweet_sentiment(tweet_text):
+    # code to analyze tweet sentiment
     pass
 
 # Define the function to send data to Postgres.    
@@ -176,7 +179,7 @@ def store_data(**context):
     # Close the cursor and connection
     cur.close()
     conn.close()
-    
+
 default_args = {
     'owner': 'Caffeinated Quantum Squadron',
     'start_date': dt.datetime(2023, 3, 8),
