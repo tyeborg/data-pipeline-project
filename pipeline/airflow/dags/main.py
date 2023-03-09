@@ -11,7 +11,6 @@ import pandas as pd
 import nltk
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
-
 import psycopg2
 import datetime as dt
 from airflow import DAG
@@ -100,8 +99,51 @@ def clean_tweet_data(**context):
 
 # Construct a method to return the sentiment result of text.
 def obtain_tweet_sentiment(tweet_text):
-    # code to analyze tweet sentiment
-    pass
+    # Initialize the sentiment analyzer.
+    analyzer = SentimentIntensityAnalyzer()
+
+    # Obtain the sentiment score.
+    score = analyzer.polarity_scores(tweet_text)
+
+    # Obtain the compound score.
+    compound = score['compound']
+
+    # Classify the tweet sentiment based on the compound score.
+    # If the compound score is greater than 0.05, the tweet is classified as positive.
+    if compound >= 0.05:
+        sentiment = 'positive'
+    # If the compound score is less than -0.05, the tweet is classified as negative.
+    elif compound <= -0.05:
+        sentiment = 'negative'
+    # If the compound score is between -0.05 and 0.05, the tweet is classified as neutral.
+    else:
+        sentiment = 'neutral'
+
+    # Return the sentiment.
+    return sentiment
+
+# Define the function to classify the sentiment of the tweet text.
+def classify_tweets(**context):
+    # Use ti.xcom_pull() to pull the returned value of extract_tweet_data task from XCom.
+    tweet_data = context['task_instance'].xcom_pull(task_ids='clean_tweet_data')
+
+    try:
+        for tweet in tweet_data:
+            # Obtain the tweet text.
+            text = tweet['text']
+
+            # Obtain the sentiment of the tweet.
+            sentiment = obtain_tweet_sentiment(text)
+
+            # Update the 'sentiment' info with the sentiment result.
+            tweet['sentiment'] = sentiment
+
+        print("Tweet Classification: Success")
+
+    except(Exception):
+        print("Tweet Classification: Fail")
+
+    return tweet_data
 
 # Define the function to send data to Postgres.    
 def store_data(**context):
@@ -205,6 +247,12 @@ clean_task = PythonOperator(
     provide_context=True,
     dag=dag
 )
+classify_task = PythonOperator(
+    task_id='classify_tweets',
+    python_callable=classify_tweets,
+    provide_context=True,
+    dag=dag
+)
 store_task = PythonOperator(
     task_id='store_data',
     python_callable=store_data,
@@ -212,7 +260,7 @@ store_task = PythonOperator(
     dag=dag
 )
 
-extract_task >> clean_task >> store_task
+extract_task >> clean_task >> classify_task >> store_task
 
 if __name__ == "__main__":
     dag.cli()
