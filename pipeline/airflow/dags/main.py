@@ -1,26 +1,86 @@
-# Import the appropriate libraries for use.
 import re
 import json
-#import nltk
 import string
-#import nltk.corpus
-import pandas as pd
-#nltk.download('stopwords')
-#from nltk.corpus import stopwords
-#from nltk.stem.porter import PorterStemmer
-
-nltk.download('vader_lexicon')
-import nltk
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
-
 import psycopg2
+import pandas as pd
 import datetime as dt
 from airflow import DAG
 from datetime import timedelta
-from airflow.models import Variable, Connection
+from airflow.models import Variable
 from airflow.operators.python_operator import PythonOperator
 
-# Construct a method to extract tweet data.
+#import nltk
+#nltk.download('vader_lexicon')
+#from nltk.sentiment.vader import SentimentIntensityAnalyzer
+
+# Create a function that'll establish a connection to the database.
+def create_connection():
+    # Get the connection details from Airflow variable.
+    connection_id = 'postgres_connection'
+    connection = Variable.get(connection_id, deserialize_json=True)
+    
+    # From Airflow variable, intialize varaibles.
+    db_host = connection['host']
+    db_port = connection['port']
+    db_name = connection['schema']
+    db_user = connection['login']
+    db_password = connection['password']
+    
+    conn = None
+    try:
+        # Connect to the database.
+        conn = psycopg2.connect(
+            host=db_host,
+            port=db_port,
+            database=db_name,
+            user=db_user,
+            password=db_password
+        )
+        print("Connection to PostgreSQL database successful")
+    except(Exception, psycopg2.Error) as error:
+         print("Error while connecting to PostgreSQL database", error)
+        
+    return conn
+
+# Create a function that'll create a table within the database.
+def create_table():
+    # Initialize variable.
+    cur = None
+    
+    try:
+        # Connect to the database.
+        conn = create_connection()
+        
+        # Open a cursor to perform database operations.
+        cur = conn.cursor()
+        
+        # Create the table to store our data in.
+        create_command = '''
+            CREATE TABLE IF NOT EXISTS tweets(
+                id VARCHAR(200),
+                username VARCHAR(200),
+                created_at VARCHAR(200),
+                text VARCHAR(200),
+                sentiment VARCHAR(200),
+                CONSTRAINT primary_key_constraint PRIMARY KEY (id)
+            )
+        '''
+        # Execute the following SQL query to construct the table.
+        cur.execute(create_command)
+        
+        # Commit the changes.
+        conn.commit()
+        print("Table successfully created")
+        
+        # Close the cursor and connection
+        cur.close()
+        conn.close()
+        print("Connection to PostgreSQL database successfully closed")
+            
+    except(Exception) as error:
+        print("Table failed to create: ", error)
+        
+# Construct a task to extract tweet data.
 def extract_tweet_data():
     # Initialize a list to store tweet data.
     tweet_data = []
@@ -39,16 +99,15 @@ def extract_tweet_data():
             }
             tweet_data.append(tweet)
             
-        print("Data Extraction: Success")
+        print("Data extracted successfully")
         
-    except(Exception):
-        print("Data Extraction: Fail")
+    except(Exception) as error:
+        print("Data failed to extract:", error)
         
     return tweet_data
 
-# Construct a method that cleans the text from tweets.
+# Construct a task that cleans the text from tweets.
 def clean_tweet_data(**context):
-    
     # Use ti.xcom_pull() to pull the returned value of extract_tweet_data task from XCom.
     tweet_data = context['task_instance'].xcom_pull(task_ids='extract_tweet_data')
     
@@ -85,17 +144,13 @@ def clean_tweet_data(**context):
             #port = PorterStemmer()
             #text = " ".join([port.stem(word) for word in text.split()])
             
-            print("\nOriginal: {}".format(tweet['text']))
-            
             # Update the 'text' info with the cleaned version.
             tweet['text'] = text
             
-            print("Cleaned: {}".format(tweet['text']))
+        print("Data successfully cleaned")
             
-        print("Data Cleaning: Success")
-            
-    except(Exception):
-        print("Data Cleaning: Failed")
+    except(Exception) as error:
+        print("Data failed to be cleaned:", error)
         
     return tweet_data
 
@@ -131,7 +186,6 @@ def obtain_tweet_sentiment(tweet_texts):
     # Return the list of sentiments.
     return sentiments
 
-
 # Define the function to classify the sentiment of the tweet text.
 def classify_tweets(**context):
     # Use ti.xcom_pull() to pull the returned value of extract_tweet_data task from XCom.
@@ -154,93 +208,56 @@ def classify_tweets(**context):
         print("Tweet Classification: Fail")
 
     return tweet_data
-
-# Define the function to send data to Postgres.    
+        
+# Define the task to send data to Postgres.
 def store_data(**context):
-    # Get the connection details from Airflow variable.
-    connection_id = 'postgres_connection'
-    connection = Variable.get(connection_id, deserialize_json=True)
-    
-    # From Airflow variable, intialize varaibles.
-    db_host = connection['host']
-    db_port = connection['port']
-    db_name = connection['schema']
-    db_user = connection['login']
-    db_password = connection['password']
+    # Create the 'tweets' table.
+    create_table()
     
     # Use ti.xcom_pull() to pull the returned value of extract_tweet_data task from XCom.
     tweet_data = context['task_instance'].xcom_pull(task_ids='clean_tweet_data')
     
     # Initialize variable.
     cur = None
-    
+        
     try:
         # Connect to the database.
-        conn = psycopg2.connect(
-            host=db_host,
-            port=db_port,
-            database=db_name,
-            user=db_user,
-            password=db_password
-        )
-        # Ensure to the user that a connection has been made.
-        print("Database Connection: Success")
+        conn = create_connection()
         
         # Open a cursor to perform database operations.
         cur = conn.cursor()
         
-         # Create the table to store our data in.
-        create_command = """
-            CREATE TABLE TWEETS (
-                ID SERIAL PRIMARY KEY,
-                USER VARCH(25) NOT NULL,
-                TIMEDATE VARCHAR(75) NOT NULL,
-                TWEETTEXT VARCHAR(255) NOT NULL,
-                TARGET VARCHAR(25)
-            );
-        """
-        
-        # Execute the following SQL query to construct the table.
-        cur.execute(create_command)
-        
-        # Commit the changes.
-        conn.commit()
-        print("Table Creation: Success")
-            
-    except(Exception):
-        print("Table Creation: Fail")
-        
-    try:
         # Define the SQL statement to insert data.
-        insert_command = """
-            INSERT INTO TWEETS(ID, USER, TIMEDATE, TWEETTEXT, TARGET)
-            VALUES(%s, %s, %s, %s, %s);
-        """
-        
+        insert_command = '''
+            INSERT INTO tweets(id, username, created_at, text, sentiment)
+            VALUES(%s, %s, %s, %s, %s)
+        '''
         # Loop through the data and insert it into the database.
         for row in tweet_data:
             cur.execute(insert_command, (row['id'], row['user'], row['created_at'], row['text'], row['sentiment']))
 
         # Commit the changes.
         conn.commit()
-        print("Data Insertion: Success")
+        print("Data successfully inserted")
+        
+        # Close the cursor and connection
+        cur.close()
+        conn.close()
+        print("Connection to PostgreSQL database successfully closed")
 
-    except(Exception):
-        print("Data Insertion: Fail")
-    
-    # Close the cursor and connection
-    cur.close()
-    conn.close()
+    except(Exception) as error:
+        print("Data failed to insert:", error)
 
 default_args = {
     'owner': 'Caffeinated Quantum Squadron',
-    'start_date': dt.datetime(2023, 3, 8),
+    'start_date': dt.datetime(2023, 3, 12),
     'retries': 1,
     'retry_delay': dt.timedelta(minutes=5),
 }
+
 # Define the DAG.
 dag = DAG(
-    dag_id = 'boop42',
+    dag_id = 'boop68',
     description='A pipeline for analyzing Twitter sentiment',
     default_args=default_args,
     schedule='@once'
@@ -257,12 +274,6 @@ clean_task = PythonOperator(
     provide_context=True,
     dag=dag
 )
-classify_task = PythonOperator(
-    task_id='classify_tweets',
-    python_callable=classify_tweets,
-    provide_context=True,
-    dag=dag
-)
 store_task = PythonOperator(
     task_id='store_data',
     python_callable=store_data,
@@ -270,7 +281,8 @@ store_task = PythonOperator(
     dag=dag
 )
 
-extract_task >> clean_task >> classify_task >> store_task
+# Specify dependencies between tasks.
+extract_task >> clean_task >> store_task
 
 if __name__ == "__main__":
     dag.cli()
