@@ -41,11 +41,12 @@ docker compose up
 * Password: `airflow`
 * Port: `5432`
 
-12). Navigate to the 'Admin` tab once more and select `Variables` to create a variable that enables access towards the established PostgreSQL database.
+12). Navigate to the `Admin` tab once more and select `Variables` to create a variable that enables access towards the established PostgreSQL database.
 
 13). Create a variable with the following information:
 * Key: `postgres_connection`
-* Val: ```bash
+* Val: 
+```bash
 {
     "host": "postgres",
     "port": "5432",
