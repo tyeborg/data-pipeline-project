@@ -30,7 +30,7 @@ docker compose up
 
 9). Login into Airflow -- Login: `airflow`; Password: `airflow`
 
-10). Navigate to the 'Admin` tab and select `Connections` to establish a connection to the PostgreSQL database.
+10). Navigate to the `Admin` tab and select `Connections` to establish a connection to the PostgreSQL database.
 
 11). Create a connection with the following information:
 * Connection Id: `postgre_sql`
