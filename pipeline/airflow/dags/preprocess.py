@@ -2,9 +2,12 @@ import re
 import string
 from collections import defaultdict
 
-#import nltk
-#nltk.download('vader_lexicon')
-#from nltk.sentiment.vader import SentimentIntensityAnalyzer
+import nltk
+nltk.download('vader_lexicon')
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+
+#import tensorflow as tf
+#from tensorflow.keras.models import load_model
 
 class Preprocess():
     def __init__(self):
@@ -100,9 +103,6 @@ class Preprocess():
                 # Remove all punctuations.
                 punctuation_lst = list(string.punctuation)
                 text = " ".join([word for word in text.split() if word not in (punctuation_lst)])
-                # Remove stopwords.
-                #stop = stopwords.words('english')
-                #text = " ".join([word for word in text.split() if word not in (stop)])
                 
                 # Perform Stemming to remove prefixing within text.
                 text = " ".join([self.stem_word(word) for word in text.split()])
@@ -118,41 +118,37 @@ class Preprocess():
         return(tweet_data)
     
     # Construct a method to return the sentiment result of text.
-    def obtain_tweet_sentiment(self, tweet_texts):
+    def obtain_tweet_sentiment(self, text):
         # Initialize the sentiment analyzer.
         analyzer = SentimentIntensityAnalyzer()
+        
+        # Initialize the sentiment variable.
+        sentiment = ''
 
-        # Initialize list to store sentiments.
-        sentiments = []
+        # Obtain the sentiment score.
+        score = analyzer.polarity_scores(text)
 
-        for tweet_text in tweet_texts:
-            # Obtain the sentiment score.
-            score = analyzer.polarity_scores(tweet_text)
+        # Obtain the compound score.
+        compound = score['compound']
 
-            # Obtain the compound score.
-            compound = score['compound']
+        # Classify the tweet sentiment based on the compound score.
+        # If the compound score is greater than 0.05, the tweet is classified as positive.
+        if compound >= 0.05:
+            sentiment = 'positive'
+        # If the compound score is less than -0.05, the tweet is classified as negative.
+        elif compound <= -0.05:
+            sentiment = 'negative'
+        # If the compound score is between -0.05 and 0.05, the tweet is classified as neutral.
+        else:
+            sentiment = 'neutral'
 
-            # Classify the tweet sentiment based on the compound score.
-            # If the compound score is greater than 0.05, the tweet is classified as positive.
-            if compound >= 0.05:
-                sentiment = 'positive'
-            # If the compound score is less than -0.05, the tweet is classified as negative.
-            elif compound <= -0.05:
-                sentiment = 'negative'
-            # If the compound score is between -0.05 and 0.05, the tweet is classified as neutral.
-            else:
-                sentiment = 'neutral'
-
-            # Add the sentiment to the list.
-            sentiments.append(sentiment)
-
-        # Return the list of sentiments.
-        return sentiments
+        # Return the sentiment.
+        return(sentiment)
     
     # Define the function to classify the sentiment of the tweet text.
-    def classify_tweets(self, context):
+    def classify_tweet_data(self, tweet_data):
         # Use ti.xcom_pull() to pull the returned value of extract_tweet_data task from XCom.
-        tweet_data = context['task_instance'].xcom_pull(task_ids='clean_tweet_data')
+        #tweet_data = context['task_instance'].xcom_pull(task_ids='clean_tweet_data')
 
         try:
             for tweet in tweet_data:
@@ -160,14 +156,14 @@ class Preprocess():
                 text = tweet['text']
 
                 # Obtain the sentiment of the tweet.
-                sentiment = obtain_tweet_sentiment(text)
+                sentiment = self.obtain_tweet_sentiment(text)
 
                 # Update the 'sentiment' info with the sentiment result.
                 tweet['sentiment'] = sentiment
 
-            print("Tweet Classification: Success")
+            print("Tweets were successfully classified.")
 
-        except(Exception):
-            print("Tweet Classification: Fail")
+        except(Exception) as error:
+            print("Tweets failed to be classified.", error)
 
-        return tweet_data
+        return(tweet_data)

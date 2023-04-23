@@ -46,14 +46,26 @@ def clean_task(**context):
     # Utlize the Preprocess() method to clean data.
     tweet_data = preprocess.clean_tweet_data(tweet_data)
     return(tweet_data)
- 
+
+# Create a task to classify the sentiment of each tweet within the tweet data.
+def classify_task(**context):
+    # Create an instance of the Preprocess() object.
+    preprocess = Preprocess()
+    
+    # Use ti.xcom_pull() to pull the returned value of extract_task task from XCom.
+    tweet_data = context['task_instance'].xcom_pull(task_ids='clean_task')
+    
+    # Classify the sentiments of all tweets and add that info to the tweet_data.
+    tweet_data = preprocess.classify_tweet_data(tweet_data)
+    return(tweet_data)
+    
 # Create a task to allocate tweet data to PostgreSQL database table.
 def store_task(**context):
     # Create an instance of the Database() object.
     db = Database()
     
     # Use ti.xcom_pull() to pull the returned value of clean_task task from XCom.
-    tweet_data = context['task_instance'].xcom_pull(task_ids='clean_task')  
+    tweet_data = context['task_instance'].xcom_pull(task_ids='classify_task')  
     
     # Create the 'Tweets' Table within the PostgreSQL database.
     db.create_table()
@@ -62,14 +74,14 @@ def store_task(**context):
     
 default_args = {
     'owner': 'Caffeinated Quantum Squadron',
-    'start_date': dt.datetime(2023, 3, 13),
+    'start_date': dt.datetime(2023, 4, 23),
     'retries': 1,
     'retry_delay': dt.timedelta(minutes=5),
 }
 
 # Define the DAG.
 dag = DAG(
-    dag_id = 'boop72',
+    dag_id = 'boop77',
     description='A pipeline for analyzing Twitter sentiment',
     default_args=default_args,
     schedule='@once'
@@ -86,6 +98,12 @@ clean_task = PythonOperator(
     provide_context=True,
     dag=dag
 )
+classify_task = PythonOperator(
+    task_id='classify_task',
+    python_callable=classify_task,
+    provide_context=True,
+    dag=dag
+)
 store_task = PythonOperator(
     task_id='store_data',
     python_callable=store_task,
@@ -94,7 +112,7 @@ store_task = PythonOperator(
 )
 
 # Specify dependencies between tasks.
-extract_task >> clean_task >> store_task
+extract_task >> clean_task >> classify_task >> store_task
 
 if __name__ == "__main__":
     dag.cli()

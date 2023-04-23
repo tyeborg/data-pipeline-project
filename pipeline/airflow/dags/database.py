@@ -53,6 +53,9 @@ class Database():
             # Open a cursor to perform database operations.
             cur = conn.cursor()
             
+            # Initilaize drop table command only if it exists.
+            drop_command = 'DROP TABLE IF EXISTS tweets'
+            
             # Create the table to store our data in.
             create_command = '''
                 CREATE TABLE IF NOT EXISTS tweets(
@@ -64,7 +67,8 @@ class Database():
                     CONSTRAINT primary_key_constraint PRIMARY KEY (id)
                 )
             '''
-            # Execute the following SQL query to construct the table.
+            # Execute the following SQL queries.
+            cur.execute(drop_command)
             cur.execute(create_command)
             
             # Commit the changes.
