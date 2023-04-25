@@ -54,17 +54,17 @@ class Database():
             cur = conn.cursor()
             
             # Initilaize drop table command only if it exists.
-            drop_command = 'DROP TABLE IF EXISTS tweets'
+            drop_command = 'DROP TABLE IF EXISTS star_wars_comments'
             
             # Create the table to store our data in.
             create_command = '''
-                CREATE TABLE IF NOT EXISTS tweets(
-                    id VARCHAR(200),
-                    username VARCHAR(200),
-                    created_at VARCHAR(200),
-                    text VARCHAR(200),
-                    sentiment VARCHAR(200),
-                    CONSTRAINT primary_key_constraint PRIMARY KEY (id)
+                CREATE TABLE IF NOT EXISTS star_wars_comments(
+                    comment_id VARCHAR(200),
+                    video_title VARCHAR(200),
+                    author VARCHAR(200),
+                    comment TEXT,
+                    creation_date VARCHAR(200),
+                    sentiment VARCHAR(200)
                 )
             '''
             # Execute the following SQL queries.
@@ -95,13 +95,13 @@ class Database():
             
             # Define the SQL statement to insert data.
             insert_command = '''
-                INSERT INTO tweets(id, username, created_at, text, sentiment)
-                VALUES(%s, %s, %s, %s, %s)
+                INSERT INTO star_wars_comments(comment_id, video_title, author, comment, creation_date, sentiment)
+                VALUES(%s, %s, %s, %s, %s, %s)
             '''
             # Loop through the data and insert it into the database.
             for row in tweet_data:
-                cur.execute(insert_command, (row['id'], row['user'], row['created_at'], row['text'], row['sentiment']))
-
+                cur.execute(insert_command, (row['comment_id'], row['video_title'], row['author'], row['comment'], row['date'], row['sentiment']))
+               
             # Commit the changes.
             conn.commit()
             print("Data successfully inserted")
@@ -113,3 +113,33 @@ class Database():
             print("Data failed to insert:", error)
             # Close the cursor and connection.
             self.close_connection(cur, conn)
+            
+    # Define the function to retrieve data from PostgreSQL
+    def get_data_from_database(self):
+        # Initialize variable.
+        cur = None
+        data = None
+            
+        try:
+            # Connect to the database.
+            conn = self.create_connection()
+            
+            # Open a cursor to perform database operations.
+            cur = conn.cursor()
+            
+            # Select ALL from the table.
+            cur.execute('SELECT * FROM star_wars_comments')
+            # Fetch all the rows as a list of tuples.
+            data = cur.fetchall()
+            
+            print("Data successfully fetched")
+            
+            # Close the cursor and connection.
+            self.close_connection(cur, conn)
+        
+        except(Exception) as error:
+            print("Data fetch failed:", error)
+            # Close the cursor and connection.
+            self.close_connection(cur, conn)
+            
+        return(data)

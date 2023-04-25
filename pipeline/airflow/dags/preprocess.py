@@ -3,122 +3,116 @@ import string
 from collections import defaultdict
 
 import nltk
+nltk.download('words')
+from nltk.corpus import words
 nltk.download('vader_lexicon')
+from nltk.stem import PorterStemmer
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
-
-#import tensorflow as tf
-#from tensorflow.keras.models import load_model
 
 class Preprocess():
     def __init__(self):
         pass
     
-    # Construct a method that'll stem a word (remove prefixing).
-    def stem_word(self, word):
-        vowels = "aeiouy"
-        prefixes = [("un", "re", "in", "dis"), ("en", "em", "ex")]
-        suffixes = [("ing", ""), ("ed", ""), ("es", "s"), ("ly", ""), ("able", ""), ("ible", ""), ("ment", ""), ("ness", ""), ("ful", ""), ("ness", ""), ("ish", ""), ("ize", ""), ("ise", "")]
-
-        # Handle special cases.
-        if word in ["was", "is", "has", "does", "goes", "makes", "takes", "likes", "comes", "goes", "gets", "puts", "says", "knows", "sees", "needs", "uses"]:
-            return word
+    def filter_comment(self, comment):
+        # Normalize by converting text to lowercase.
+        comment = comment.lower()
         
-        # Apply common rules.
-        word = word.lower()
-        word = re.sub(r"([a-z])([A-Z])", r"\1 \2", word)
-        word = re.sub(r"[^a-zA-Z0-9\s]", "", word)
+        # Remove hashtags.
+        comment = " ".join([word for word in comment.split() if word[0] != '#'])
         
-        # Remove prefixes.
-        for prefix_set in prefixes:
-            for prefix in prefix_set:
-                if word.startswith(prefix):
-                    word = word[len(prefix):]
-                    break
+        # Remove URL links (http or https).
+        comment = re.sub(r'https?:\/\/\S+', '', comment)
+        # Remove URL links (with or without www).S
+        comment = re.sub(r"www\.[a-z]?\.?(com)+|[a-z]+\.(com)", '', comment)
         
-        # Remove suffixes.
-        for suffix_set in suffixes:
-            for suffix in suffix_set:
-                if word.endswith(suffix):
-                    word = word[:len(word)-len(suffix)]
-                    break
+        # Remove HTML reference characters.
+        comment = re.sub(r'&[a-z]+;', '', comment)
+        # Remove non-letter characters.
+        comment = re.sub(r"[^a-z\s\(\-:\)\\\/\];='#]", '', comment)
         
-        # Remove duplicate consonants.
-        new_word = ""
-        for i in range(len(word)):
-            if i > 0 and word[i] == word[i-1] and word[i] not in vowels:
-                continue
-            new_word += word[i]
+        # Remove all punctuations.
+        punctuation_lst = list(string.punctuation)
+        comment = " ".join([word for word in comment.split() if word not in (punctuation_lst)])
         
-        # Reduce vowels.
-        for suffix in suffixes:
-            for s in suffix:
-                if new_word.endswith(s):
-                    new_word = self.reduce_vowels(new_word)
-                    break
-        
-        # Handle irregular words.
-        if new_word in ["go", "have", "be", "do", "say", "make", "take", "see", "get", "come", "know", "put", "find", "give", "think", "tell", "feel", "become", "leave", "bring", "begin", "keep", "start", "hear", "stand", "lose", "win", "write", "sing"]:
-            return new_word
-        
-        return(new_word)
+        # Return cleaned comment.
+        return(comment)
     
-    # Create a function to reduce vowels within a word.
-    def reduce_vowels(self, word):
-        new_word = ""
-        vowels = "aeiouy"
-        count = 0
-        for i in range(len(word)):
-            if i > 0 and word[i] in vowels and word[i] == word[i-1]:
-                count += 1
-            else:
-                count = 0
-            if count < 2:
-                new_word += word[i]
-        return(new_word)
-    
-    # Construct a task that cleans the text from tweets.
-    def clean_tweet_data(self, tweet_data):    
+    def is_english(self, comment):
+        # Initialize a set of English vocabulary words to verfiy
+        # the comment to be in the English language.
+        english_vocab = set(words.words()) 
+        
+        # Tokenize the comment.
+        words = nltk.wordpunct_tokenize(comment)
+        
+        # Determine if each word belongs to the english dictionary.
+        english_words = [word for word in words if word in english_vocab]
+        if len(english_words) / len(words) >= 0.5:
+            return True
+        else:
+            return False
+        
+    def discard_unwanted_comments(self, comment_data, unwanted_lst):
+        # Create a duplicate of the comment_data to avoid comment removal errors.
+        duplicate_data = comment_data 
+        
+        for comment in duplicate_data:
+            # Declare the comment from the dictionary.
+            comment_text = comment['comment']
+            
+            if comment_text in unwanted_lst:
+                # Remove comment from comment_data.
+                comment_data.remove(comment)
+                
+        return(comment_data)
+            
+    # Construct a task that cleans the text from comments.
+    def clean_comment_data(self, comment_data):  
         try:
-            # Iterate through each tweet info in tweet_data.
-            for tweet in tweet_data:
-                # Declare the tweet text from the dictionary.
-                text = tweet['text']
+            # Initialize a list to get rid of the unwanted comments.
+            unwanted = [] 
+            
+            # Iterate through each comment info in comment_data.
+            for comment in comment_data:
+                # Declare the comment from the dictionary.
+                comment_text = comment['comment']
                 
-                # Normalize by converting text to lowercase.
-                text = text.lower()
+                # ULTRA clean the comment.
+                comment_text = self.filter_comment(comment_text)
                 
-                # Remove Twitter handles and hashtags.
-                text = " ".join([word for word in text.split() if word[0] != '@' and word[0] != '#'])
+                # Update the 'comment' info with the cleaned version.
+                comment['comment'] = comment_text
                 
-                # Remove URL links (http or https).
-                text = re.sub(r'https?:\/\/\S+', '', text)
-                # Remove URL links (with or without www).S
-                text = re.sub(r"www\.[a-z]?\.?(com)+|[a-z]+\.(com)", '', text)
+                if self.is_english(comment_text) == True:
+                    # Perform Stemming to remove prefixing within text.
+                    # Create a stemmer object
+                    stemmer = PorterStemmer()
+                    comment_text = " ".join([stemmer.stem(word) for word in comment_text.split()])
                 
-                # Remove HTML reference characters.
-                text = re.sub(r'&[a-z]+;', '', text)
-                # Remove non-letter characters.
-                text = re.sub(r"[^a-z\s\(\-:\)\\\/\];='#]", '', text)
-                
-                # Remove all punctuations.
-                punctuation_lst = list(string.punctuation)
-                text = " ".join([word for word in text.split() if word not in (punctuation_lst)])
-                
-                # Perform Stemming to remove prefixing within text.
-                text = " ".join([self.stem_word(word) for word in text.split()])
-                
-                # Update the 'text' info with the cleaned version.
-                tweet['text'] = text
+                    # Update the 'comment' info with the stemmed version.
+                    comment['comment'] = comment_text
+                else:
+                    # If comment is not in the English language, discard it.
+                    unwanted.append(comment['comment'])
+                    
+            # Discard the unwanted comments.
+            comment_data = self.discard_unwanted_comments(comment_data, unwanted)
+            
+            # Convert comment_data list to a set to remove duplicates.
+            comment_data_set = set(tuple(comment.items()) for comment in comment_data)
+            
+            # Convert back to a list.
+            comment_data = [dict(comment) for comment in comment_data_set]
                 
             print("Data successfully cleaned")
                 
         except(Exception) as error:
             print("Data failed to be cleaned:", error)
             
-        return(tweet_data)
+        return(comment_data)
     
     # Construct a method to return the sentiment result of text.
-    def obtain_tweet_sentiment(self, text):
+    def obtain_comment_sentiment(self, text):
         # Initialize the sentiment analyzer.
         analyzer = SentimentIntensityAnalyzer()
         
@@ -146,24 +140,21 @@ class Preprocess():
         return(sentiment)
     
     # Define the function to classify the sentiment of the tweet text.
-    def classify_tweet_data(self, tweet_data):
-        # Use ti.xcom_pull() to pull the returned value of extract_tweet_data task from XCom.
-        #tweet_data = context['task_instance'].xcom_pull(task_ids='clean_tweet_data')
-
+    def classify_comment_data(self, comment_data):
         try:
-            for tweet in tweet_data:
+            for row in comment_data:
                 # Obtain the tweet text.
-                text = tweet['text']
+                text = row['comment']
 
                 # Obtain the sentiment of the tweet.
-                sentiment = self.obtain_tweet_sentiment(text)
+                sentiment = self.obtain_comment_sentiment(text)
 
                 # Update the 'sentiment' info with the sentiment result.
-                tweet['sentiment'] = sentiment
+                row['sentiment'] = sentiment
 
             print("Tweets were successfully classified.")
 
         except(Exception) as error:
             print("Tweets failed to be classified.", error)
 
-        return(tweet_data)
+        return(comment_data)
