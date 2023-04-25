@@ -120,10 +120,10 @@ class Preprocess():
         sentiment = ''
 
         # Obtain the sentiment score.
-        score = analyzer.polarity_scores(text)
+        sentiment_score = analyzer.polarity_scores(text)
 
         # Obtain the compound score.
-        compound = score['compound']
+        compound = sentiment_score['compound']
 
         # Classify the tweet sentiment based on the compound score.
         # If the compound score is greater than 0.05, the tweet is classified as positive.
@@ -138,6 +138,26 @@ class Preprocess():
 
         # Return the sentiment.
         return(sentiment)
+    
+        '''
+        # If use this code, add positive_threshold=0.05, negative_threshold=-0.05 parameters!
+        # Initialize the sentiment analyzer.
+        analyzer = SentimentIntensityAnalyzer()
+
+        # Obtain the sentiment scores.
+        sentiment_score = analyzer.polarity_scores(text)
+
+        # Classify the sentiment based on the compound score.
+        compound = sentiment_score['compound']
+        switcher = {
+            compound >= positive_threshold: 'positive',
+            compound <= negative_threshold: 'negative',
+        }
+        sentiment = switcher.get(True, 'neutral')
+
+        # Return the sentiment.
+        return sentiment
+        '''
     
     # Define the function to classify the sentiment of the tweet text.
     def classify_comment_data(self, comment_data):
