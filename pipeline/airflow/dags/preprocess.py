@@ -149,24 +149,6 @@ class Preprocess():
         positive_threshold = 0.05
         negative_threshold = -0.05
 
-<<<<<<< HEAD
-        # Obtain the sentiment score.
-        sentiment_score = analyzer.polarity_scores(text)
-
-        # Obtain the compound score.
-        compound = sentiment_score['compound']
-
-        # Classify the tweet sentiment based on the compound score.
-        # If the compound score is greater than 0.05, the tweet is classified as positive.
-        if compound >= 0.05:
-            sentiment = 'positive'
-        # If the compound score is less than -0.05, the tweet is classified as negative.
-        elif compound <= -0.05:
-            sentiment = 'negative'
-        # If the compound score is between -0.05 and 0.05, the tweet is classified as neutral.
-        else:
-            sentiment = 'neutral'
-=======
         # Obtain the sentiment scores.
         sentiment_score = analyzer.polarity_scores(text)
 
@@ -177,30 +159,9 @@ class Preprocess():
             compound <= negative_threshold: 'negative',
         }
         sentiment = switcher.get(True, 'neutral')
->>>>>>> 62c9e5d (Modified task to upload csv to Kaggle)
 
         # Return the sentiment.
         return(sentiment)
-    
-        '''
-        # If use this code, add positive_threshold=0.05, negative_threshold=-0.05 parameters!
-        # Initialize the sentiment analyzer.
-        analyzer = SentimentIntensityAnalyzer()
-
-        # Obtain the sentiment scores.
-        sentiment_score = analyzer.polarity_scores(text)
-
-        # Classify the sentiment based on the compound score.
-        compound = sentiment_score['compound']
-        switcher = {
-            compound >= positive_threshold: 'positive',
-            compound <= negative_threshold: 'negative',
-        }
-        sentiment = switcher.get(True, 'neutral')
-
-        # Return the sentiment.
-        return sentiment
-        '''
     
     # Define the function to classify the sentiment of the tweet text.
     def classify_comment_data(self, comment_data):
