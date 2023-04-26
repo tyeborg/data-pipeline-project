@@ -18,12 +18,13 @@ x-airflow-common:
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
-    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-pip==23.1.1 nltk==3.6.2 oauth2client<4.0.0 google-api-python-client<2.0.0,>=1.6.0 typing-extensions>=4.0.0 kaggle==1.5.13}
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-pip==23.1.2 nltk==3.6.2 oauth2client<4.0.0 google-api-python-client<2.0.0,>=1.6.0 typing-extensions>=4.0.0 kaggle==1.5.13}
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
     - ${AIRFLOW_PROJ_DIR:-.}/data:/home/airflow/data
+    - ${AIRFLOW_PROJ_DIR:-.}/.kaggle:/home/airflow/.kaggle
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on

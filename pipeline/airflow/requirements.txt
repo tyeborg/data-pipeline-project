@@ -1,8 +1,7 @@
 numpy
 pandas
-twint
 nltk
+kaggle
 psycopg2-binary
 sqlalchemy<2.0
 apache-airflow-providers-postgres
-tensorflow

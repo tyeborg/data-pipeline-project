@@ -9,7 +9,9 @@ class Extract():
         self.api_service_name = 'youtube'
         self.api_version = 'v3'
         self.api_key = 'AIzaSyBfsz13OHhGI51aPMASG4NtfmM4EBbWyDY'
-        self.channel_id = 'UCZGYJFUizSax-yElQaFDp5Q' # @starwars channel id
+        
+        # @starwars YouTube channel ID.
+        self.channel_id = 'UCZGYJFUizSax-yElQaFDp5Q' 
         self.youtube = build(self.api_service_name, self.api_version, developerKey=self.api_key)
     
     def get_channel_info(self):
@@ -105,10 +107,10 @@ class Extract():
                 if counter1 == 1000:
                     break
                 
-            print("Data extracted successfully")
+            print("[+] Data successfully extracted using YouTube API v3")
             
         except(Exception) as error:
-            print("Data failed to extract:", error)
+            print("[-] Data failed to extract using YouTube API v3:", error)
                 
         # Return comments list.
         return(comments_list)

@@ -1,6 +1,10 @@
+import csv
 import json
 import psycopg2
 from airflow.models import Variable
+
+# Define the filename for the CSV file.
+FILENAME = './dags/data.csv'
 
 class Database():
     def __init__(self):
@@ -29,9 +33,9 @@ class Database():
                 user=db_user,
                 password=db_password
             )
-            print("Connection to PostgreSQL database successful")
+            print("[+] Connection to PostgreSQL database successful")
         except(Exception, psycopg2.Error) as error:
-            print("Error while connecting to PostgreSQL database", error)
+            print("[-] Error while connecting to PostgreSQL database", error)
             
         return(conn)
     
@@ -39,7 +43,7 @@ class Database():
     def close_connection(self, cur, conn):
         cur.close()
         conn.close()
-        print("Connection to PostgreSQL database successfully closed")
+        print("[+] Connection to PostgreSQL database successfully closed")
        
     # Create a function that'll create a table within the database.
     def create_table(self):
@@ -73,13 +77,13 @@ class Database():
             
             # Commit the changes.
             conn.commit()
-            print("Table successfully created")
+            print("[+] Table successfully created")
             
             # Close the cursor and connection.
             self.close_connection(cur, conn)
                 
         except(Exception) as error:
-            print("Table failed to create:", error)
+            print("[-] Table failed to create:", error)
             
     # Define the task to send data to Postgres.
     def store_data(self, tweet_data):    
@@ -104,13 +108,13 @@ class Database():
                
             # Commit the changes.
             conn.commit()
-            print("Data successfully inserted")
+            print("[+] Data successfully inserted into table")
             
             # Close the cursor and connection.
             self.close_connection(cur, conn)
 
         except(Exception) as error:
-            print("Data failed to insert:", error)
+            print("[-] Data insertion failed:", error)
             # Close the cursor and connection.
             self.close_connection(cur, conn)
             
@@ -132,14 +136,36 @@ class Database():
             # Fetch all the rows as a list of tuples.
             data = cur.fetchall()
             
-            print("Data successfully fetched")
+            print("[+] Data successfully fetched")
             
             # Close the cursor and connection.
             self.close_connection(cur, conn)
         
         except(Exception) as error:
-            print("Data fetch failed:", error)
+            print("[-] Data fetch failed:", error)
             # Close the cursor and connection.
             self.close_connection(cur, conn)
             
         return(data)
+    
+    def save_into_csv(self, filename):
+        # Obtain the rows as a list of tuples.
+        rows = self.get_data_from_database()
+        
+        try:
+            # Write the data to a CSV file.
+            with open(filename, mode='w', newline='') as file:
+                # Create a CSV writer object. 
+                writer = csv.writer(file)
+                
+                # Initialize the header rows.
+                writer.writerow(['comment_id', 'video_title', 'author', 'comment', 'date', 'sentiment'])
+                # Insert the rows into the CSV.
+                for row in rows:
+                    writer.writerow(row)
+            
+            # Notify the user that this task was accomplished.        
+            print("[+] Successfully copied data from PostgreSQL to CSV.")
+            
+        except(Exception) as error:
+            print("[-] Failed to copy data to csv file:", error)

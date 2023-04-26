@@ -1,0 +1,32 @@
+{
+    "title": "Star Wars YouTube Comments Sentiment Analysis",
+    "id": "tylersupersad/star-wars-youtube-comments-sentiment",
+    "licenses": [
+        {
+            "name": "CC0-1.0"
+        }
+    ],
+    "resources": [
+        {
+            "path": "data.csv",
+            "description": "The dataset contains comments from various Star Wars YouTube videos, along with their associated sentiment scores.",
+            "format": "csv"
+        }
+    ],
+    "keywords": [
+        "star wars",
+        "youtube",
+        "comments",
+        "sentiment analysis",
+        "nlp",
+        "machine learning",
+        "data science"
+    ],
+    "collaborators": [
+        {
+            "name": "Caffeinated Quantum Squadron",
+            "email": "supersadtyler@gmail.com",
+            "role": "owner"
+        }
+    ]
+}

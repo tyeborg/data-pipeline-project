@@ -1,4 +1,3 @@
-import csv
 import pandas as pd
 import datetime as dt
 from airflow import DAG
@@ -8,6 +7,7 @@ from airflow.operators.python_operator import PythonOperator
 # Import the necessary classes from different files.
 from extract import Extract
 from database import Database
+from upload import KaggleUpload
 from preprocess import Preprocess
 
 # Define the filename for the CSV file.
@@ -39,11 +39,9 @@ def extract_task():
 
         # Get new comments and append them onto this list.
         comments_data = extract.get_comments(comments_data)
-            
-        print("Data extracted successfully")
         
     except(Exception) as error:
-        print("Data failed to extract:", error)
+        print("[-] Data failed to extract:", error)
     
     return(comments_data)
 
@@ -81,67 +79,32 @@ def store_task(**context):
     
     # Create the 'Comments' Table within the PostgreSQL database.
     db.create_table()
-    # Insert the tweet_data into the 'Comments' Table.
+    # Insert the comment_data into the 'Comments' Table.
     db.store_data(comment_data)
     
-def save_to_csv_task():
-    # Create an instance of the Database() object.
-    db= Database()
+    # Write the data to CSV file.
+    db.save_into_csv(FILENAME)
+
+# Create a task to upload updated CSV to Kaggle.      
+def upload_task():
+    try:
+        kaggle = KaggleUpload()
+        kaggle.upload()
+        print('[+] Successfully uploaded to Kaggle')
+    except(Exception) as error:
+        print('[-] Failed to upload to Kaggle:', error)
     
-    # Obtain the rows as a list of tuples.
-    rows = db.get_data_from_database()
-    
-    # Write the data to a CSV file.
-    with open(FILENAME, mode='w', newline='') as file:
-        # Create a CSV writer object. 
-        writer = csv.writer(file)
-        
-        # Initialize the header rows.
-        writer.writerow(['comment_id', 'video_title', 'author', 'comment', 'date', 'sentiment'])
-        # Insert the rows into the CSV.
-        for row in rows:
-            writer.writerow(row)
-    
-#def upload_to_kaggle_task(username, key):
-    # Define Kaggle API credentials
-    #kaggle_username = 'tylersupersad'
-    #kaggle_key = 'b072f733e77f84cfd00d15644c227c3e'
-        
-    # Create an instance of the Database() object.
-    #db = Database()
-    
-    # Fetch the content from the table into a variable.
-    #data = db.get_data()
-    #try: 
-        # Write the data to a CSV file.
-        #with open('./dags/starwars.csv', 'w', newline='') as f:
-            #writer = csv.writer(f)
-            #writer.writerows(data)
-            
-        # Upload CSV file to Kaggle dataset.
-        #api = KaggleApi()
-        #api.authenticate(username=username, key=key)
-        #dataset = kaggle.api.dataset_metadata('tylersupersad/star-wars-youtube-comments-sentiment')
-        #file_name = './dags/starwars.csv'
-        #with open(file_name, 'rb') as f:
-            #kaggle.api.dataset_upload_file(dataset['id'], file_name, f)
-        
-        #print('Successfully uploaded to Kaggle')
-            
-    #except(Exception) as error:
-        #print('Failed to upload to Kaggle:', error)
-         
 default_args = {
     'owner': 'Caffeinated Quantum Squadron',
-    'start_date': dt.datetime(2023, 4, 25),
+    'start_date': dt.datetime(2023, 4, 26),
     'retries': 1,
     'retry_delay': dt.timedelta(minutes=5),
 }
 
 # Define the DAG.
 dag = DAG(
-    dag_id = 'boop82',
-    description='A pipeline for analyzing Twitter sentiment',
+    dag_id = 'boop99',
+    description='YouTube Star Wars Sentiment',
     default_args=default_args,
     schedule_interval='@once'
 )
@@ -164,28 +127,19 @@ classify_task = PythonOperator(
     dag=dag
 )
 store_task = PythonOperator(
-    task_id='store_data',
+    task_id='store_task',
     python_callable=store_task,
     provide_context=True,
     dag=dag
 )
-save_to_csv_task = PythonOperator(
-    task_id='save_to_csv_task',
-    python_callable=save_to_csv_task,
+upload_task = PythonOperator(
+    task_id='upload_task',
+    python_callable=upload_task,
     dag=dag
 )
-#upload_to_kaggle_task = PythonOperator(
-    #task_id='upload_to_kaggle',
-    #python_callable=upload_to_kaggle_task,
-    #op_kwargs={
-            #'username': 'tylersupersad',
-            #'key': 'b072f733e77f84cfd00d15644c227c3e'
-    #},
-    #dag=dag
-#)
 
 # Specify dependencies between tasks.
-extract_task >> clean_task >> classify_task >> store_task >> save_to_csv_task
+extract_task >> clean_task >> classify_task >> store_task >> upload_task
 
 if __name__ == "__main__":
     dag.cli()
