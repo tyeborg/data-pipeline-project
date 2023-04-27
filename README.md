@@ -1,4 +1,4 @@
-# Mean Tweet Pipeline
+# Star Wars YouTube Comments Sentiment Pipeline
 
 ## Installation
 1). Clone this repository by `git clone https://github.com/tyeborg/mean-tweet-pipeline.git`
