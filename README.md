@@ -63,3 +63,8 @@ docker compose up
     <img src="https://skillicons.dev/icons?i=docker,python,git,vscode" />
   </a>
 </p>
+
+## Collaborators
+<a href="https://github.com/tyeborg/star-wars-youtube-comments-pipeline/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=tyeborg/star-wars-youtube-comments-pipeline" />
+</a>
