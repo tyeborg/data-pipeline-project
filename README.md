@@ -60,6 +60,6 @@ docker compose up
 
 <p float="left">
   <a href="https://skillicons.dev">
-    <img src="https://skillicons.dev/icons?i=docker,python,twitter,git,vscode" />
+    <img src="https://skillicons.dev/icons?i=docker,python,kaggle,youtube,git,vscode" />
   </a>
 </p>
