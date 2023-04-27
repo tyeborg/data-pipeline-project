@@ -57,8 +57,8 @@ docker compose up
 ```
 
 ## Languages & Tools Utilized
-
 <p float="left">
+  <img src="https://user-images.githubusercontent.com/96035297/235001126-5f0e5b3e-07af-45f1-8b03-0b303209a3bb.png" height="50" width="50" />
   <a href="https://skillicons.dev">
     <img src="https://skillicons.dev/icons?i=docker,python,git,vscode" />
   </a>
