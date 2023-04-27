@@ -1,5 +1,6 @@
 # pip install google-api-python-client==2.86.0
 import pandas as pd
+import random, datetime
 from dateutil import parser
 from googleapiclient.discovery import build
 
@@ -36,9 +37,10 @@ class Extract():
         # Find videos that contain 'Trailer'.
         query = 'Trailer'
         # Number of videos to retrieve per code execution.
-        num_results = 5 
-        # All videos published after @starwars' YouTube channel conception.
-        published_after = channel_created_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+        num_results = 5
+        # Add a random time interval to the publishedAfter parameter
+        time_diff = datetime.timedelta(days=random.randint(1, 4380))
+        published_after = (channel_created_date + time_diff).strftime('%Y-%m-%dT%H:%M:%SZ')
         
         # Call the YouTube Data API to retrieve the list of videos.
         search_response = self.youtube.search().list(
@@ -64,28 +66,24 @@ class Extract():
             video_titles.append(info['snippet']['title'])
             
         print(video_titles)
-        
-        # Initialize a list to store the comment data.
-        #comments = []
            
-        try:
-            # Initialize a counter.
-            counter1 = 0
-
-            # Call the YouTube Data API to retrieve comments for the videos.
-            for video_id, video_title in zip(video_ids, video_titles):
-                results = self.youtube.commentThreads().list(
-                    part='snippet',
-                    videoId=video_id,
-                    textFormat='plainText',
-                    maxResults=200
-                )
-                results = results.execute()
-                
-                counter1 += 1
-                counter2 = 0
-                
-                while results and counter2 < 200:
+        # Call the YouTube Data API to retrieve comments for the videos.
+        for video_id, video_title in zip(video_ids, video_titles):
+            results = self.youtube.commentThreads().list(
+                part='snippet',
+                videoId=video_id,
+                textFormat='plainText',
+                maxResults=100,
+            )
+            # Execute the API request to get the results.
+            results = results.execute()
+        
+            # Initialize a counter.    
+            count = 0
+            
+            while count < 100:
+                try:
+                    # Retrieve the next page of comments
                     for item in results['items']:
                         star_wars_comment = {
                             'comment_id': item['snippet']['topLevelComment']['id'],
@@ -95,22 +93,36 @@ class Extract():
                             'date': item['snippet']['topLevelComment']['snippet']['publishedAt'],
                             'sentiment': '' 
                         }
-                        comments_list.append(star_wars_comment)
-
-                        counter2 += 1
-                        if counter2 == 200:
-                            break
-                        
-                    if counter2 == 200:
+                        # Only add unique comments to the list.
+                        if star_wars_comment['comment_id'] not in [comment['comment_id'] for comment in comments_list]:
+                            comments_list.append(star_wars_comment)
+                            count += 1
+                            print(f"[+] Comment #{count} retrieved for video: '{video_title}'")
+                            
+                            # Stop the loop when 100 comments are retrieved
+                            if count == 100: 
+                                break
+                            
+                    if 'nextPageToken' in results:
+                        # Get the next page of comments
+                        results = self.youtube.commentThreads().list(
+                            part='snippet',
+                            videoId=video_id,
+                            textFormat='plainText',
+                            maxResults=100,
+                            pageToken=results['nextPageToken']
+                        )
+                        # Execute the API request to get the results.
+                        results = results.execute()
+                    else:
+                        # No more pages, break out of the loop.
                         break
-    
-                if counter1 == 1000:
+                    
+                except(Exception) as error:
+                    print("[-] Data failed to extract using YouTube API v3:", error)
                     break
                 
-            print("[+] Data successfully extracted using YouTube API v3")
-            
-        except(Exception) as error:
-            print("[-] Data failed to extract using YouTube API v3:", error)
+        print("[+] Data successfully extracted using YouTube API v3")
                 
         # Return comments list.
         return(comments_list)
