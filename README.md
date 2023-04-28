@@ -59,8 +59,8 @@ docker compose up
 ## Languages & Tools Utilized
 <p float="left">
   <img src="https://user-images.githubusercontent.com/96035297/235001126-5f0e5b3e-07af-45f1-8b03-0b303209a3bb.png" height="50" width="50" />
+  <img src="https://user-images.githubusercontent.com/96035297/235232871-705f0d65-597d-414f-8120-54410fb848a1.svg" height="48" width="48" />
   <img src="https://user-images.githubusercontent.com/96035297/235001916-32b5b3db-8331-43c6-8356-90217de5e45a.svg" height="50" width="50" />
-  <img src="https://user-images.githubusercontent.com/96035297/235232871-705f0d65-597d-414f-8120-54410fb848a1.svg" height="45" width="45" />
   <a href="https://skillicons.dev">
     <img src="https://skillicons.dev/icons?i=docker,python,git,vscode" />
   </a>
